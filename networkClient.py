@@ -1,16 +1,43 @@
 #!/usr/bin/python           # or wherever your python execs live on unix derivatives
 
-import os, platform, sys, telnetlib, textwrap, threading
+import os, platform, sys, socket, telnetlib, textwrap, threading
 
-import options
+import appVariables, appOptions
 
 class networkClient(telnetlib.Telnet):
 
-    def __init__( self, address, port ):
-        telnetlib.Telnet.__init__( self, host = address, port = port )
-        rt = threading.Thread( target = self.doRead )
-        rt.daemon = True  # setting as background thread
-        rt.start( )
+    def __init__( self ):
+        telnetlib.Telnet.__init__( self )
+
+    def doConnect( self, address, port ):
+        if not appVariables.networkClientConnected:
+            sys.stdout.write( "Attempting network connection to host " + address + " on port " + str( port ) +
+                              os.linesep )
+            try:
+                self.open( host = address, port = port)
+            except socket.gaierror as gaier:
+                sys.stdout.write( "Error during connect:  Error number:  " + str( gaier.errno ) + " - " +
+                                  gaier.strerror + os.linesep + "    * This may signify a bad network address *" +
+                                  os.linesep )
+            except socket.error as socker:
+                sys.stdout.write( "Error during connect:  Error number:  " + str( socker.errno ) + " - " +
+                                  socker.strerror + os.linesep + "    * This may signify a bad port number *" +
+                                  os.linesep )
+            else:
+                appVariables.networkClientConnected = True
+                rt = threading.Thread( target = self.doRead )
+                rt.daemon = True  # setting as background thread
+                rt.start( )
+
+    def doWrite( self, data ):
+        if appVariables.networkClientConnected:
+            self.write( data )
+        else:
+            sys.stdout.write( "Not connected anywhere, so no transmissions being sent." + os.linesep )
+
+    def doDisconnect( self ):
+        if appVariables.networkClientConnected:
+            appVariables.networkClientConnected = False
 
     def telnetNegotiationCallback( self, socket, command, option ):
         # command will be DO DONT WILL WONT
@@ -56,7 +83,7 @@ class networkClient(telnetlib.Telnet):
         return ''.join( r )
 
     def doRead( self ):
-        while True:
+        while appVariables.networkClientConnected:
             data = self.read_very_eager()
             if not (data == r""):
                 # test for and perhaps strip ANSI if the platform doesn't support console colorization
@@ -64,7 +91,7 @@ class networkClient(telnetlib.Telnet):
                     data = self.deColorize( data )
                 # kick out tabstops because they're impossible to intelligently wrap with in any font
                 # * data should still be a string from self.read
-                data = data.replace('\t','' * options.tabWidth)
+                data = data.replace('\t','' * appOptions.tabWidth )
                 # python's textwrap really is pointless - by the time we do all this other stuff we may as well do the
                 # rest ourselves too - especially if we're wrapping ANSI escape codes (which we will be eventually)
                 # FIRST SPLIT THE STRING ON ITS ORIGINAL USER-DEFINED LINEBREAKS
@@ -72,7 +99,7 @@ class networkClient(telnetlib.Telnet):
                 data = data.split( '\r\n' )
                 for p in data:
                     # now we can wrap each individual paragraph
-                    print ( textwrap.fill( p, options.screenWidth ) )
+                    print ( textwrap.fill( p, appOptions.screenWidth ))
                 #for i in range( len( data ) ):
                     #
                     # keeping the next (commented) line for future debugging purposes
@@ -80,6 +107,9 @@ class networkClient(telnetlib.Telnet):
                     # sys.stdout.write( str(ord(data[i])) + " " + str(data[i]) + os.linesep )
                     #
                 #    sys.stdout.write( data )
-
-
-
+        #
+        # Finally allow the actual closure of the telnet client here, in this thread, after exiting the read loop/thread
+        # DON'T DO THIS ANYWHERE ELSE!
+        #
+        self.close()
+        sys.stdout.write( "Disconnected from host " + self.host + " on port " + str( self.port ) + os.linesep )
