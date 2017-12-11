@@ -73,8 +73,14 @@ while not appVariables.appExiting:
             # for each backspace keystroke we must instruct stdout to cursor backward, print one whitespace over the
             # existing character, and backspace the cursor back into that location again
             #
-            sys.stdout.write("\b \b")
-            sys.stdout.flush()
+            # sys.stdout.write("\b \b")
+            sys.stdout.write("\r")
+            sys.stdout.flush( )
+            sys.stdout.write(' ' * ( len( chrline ) + 1 ) )
+            sys.stdout.flush( )
+            sys.stdout.write( "\r" )
+            sys.stdout.flush( )
+            sys.stdout.write(''.join( chrline ))
     #
     # finally let the while continue
     #
