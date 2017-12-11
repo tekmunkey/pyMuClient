@@ -80,7 +80,7 @@ while not appVariables.appExiting:
     #
     continue
 
-networkClient.doDisconnect()
+nc.doDisconnect()
 
 #
 # Check out:
