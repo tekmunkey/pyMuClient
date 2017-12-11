@@ -1,6 +1,8 @@
 #!/usr/bin/python           # or wherever your python execs live on unix derivatives
 
-import os, platform, sys, telnetlib, threading
+import os, platform, sys, telnetlib, textwrap, threading
+
+import options
 
 class networkClient(telnetlib.Telnet):
 
@@ -50,22 +52,34 @@ class networkClient(telnetlib.Telnet):
                         incolor = False
                 # no matter what else we did here, continue on
                 continue
-        return r
+        # cut return value back into a string before actually returning it
+        return ''.join( r )
 
     def doRead( self ):
         while True:
             data = self.read_very_eager()
             if not (data == r""):
-                # print data
+                # test for and perhaps strip ANSI if the platform doesn't support console colorization
                 if ( not self.isConsoleANSI() ):
                     data = self.deColorize( data )
-                for i in range( len( data ) ):
+                # kick out tabstops because they're impossible to intelligently wrap with in any font
+                # * data should still be a string from self.read
+                data = data.replace('\t','' * options.tabWidth)
+                # python's textwrap really is pointless - by the time we do all this other stuff we may as well do the
+                # rest ourselves too - especially if we're wrapping ANSI escape codes (which we will be eventually)
+                # FIRST SPLIT THE STRING ON ITS ORIGINAL USER-DEFINED LINEBREAKS
+                # network lineterms should always be 0x0d 0x0a just like windows
+                data = data.split( '\r\n' )
+                for p in data:
+                    # now we can wrap each individual paragraph
+                    print ( textwrap.fill( p, options.screenWidth ) )
+                #for i in range( len( data ) ):
                     #
                     # keeping the next (commented) line for future debugging purposes
                     #
                     # sys.stdout.write( str(ord(data[i])) + " " + str(data[i]) + os.linesep )
                     #
-                    sys.stdout.write( str(data[i]) )
+                #    sys.stdout.write( data )
 
 
 
