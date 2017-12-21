@@ -1,3 +1,9 @@
+# Support tekmunkey via Patreon
+
+If you'd like to support my free software developments, my patreon can be found at:
+
+https://www.patreon.com/tekmunkey
+
 # pyMuClient
 
 A telnet/MUSH Client done up in Python.  Nothing special, really, just an input loop built on Python's telnetlib.  It either passes ANSI escape sequences through 
